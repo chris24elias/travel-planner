@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
+@import "@fontsource/be-vietnam-pro/700.css";
+
+@theme {
+  --color-page-bg: #fdf9f3;
+  --color-sidebar-bg: #f7f2ea;
+  --color-card-bg: #ffffff;
+  --color-surface-high: #f0ebe3;
+  --color-surface-highest: #e8e2d9;
+
+  --color-text-heading: #1c1917;
+  --color-text-body: #44403c;
+  --color-text-muted: #a8a29e;
+  --color-text-placeholder: #d6d3d1;
+
+  --color-primary: #f59e0b;
+  --color-primary-hover: #d97706;
+  --color-primary-light: #fef3c7;
+
+  --color-border-light: #f0ebe3;
+  --color-border-medium: #e8e2d9;
+  --color-border-focus: #f59e0b;
+
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  --color-cat-food: #22c55e;
+  --color-cat-temple: #3b82f6;
+  --color-cat-shopping: #a855f7;
+  --color-cat-activity: #f59e0b;
+  --color-cat-nightlife: #ec4899;
+  --color-cat-nature: #10b981;
+  --color-cat-culture: #6366f1;
+  --color-cat-other: #6b7280;
+
+  --color-res-dining: #22c55e;
+  --color-res-transport: #3b82f6;
+  --color-res-activity: #f59e0b;
+
+  --font-heading: "Plus Jakarta Sans Variable", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, sans-serif;
+
+  --shadow-card: 0 1px 3px rgba(68, 64, 60, 0.06), 0 1px 2px rgba(68, 64, 60, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(68, 64, 60, 0.1), 0 2px 4px rgba(68, 64, 60, 0.06);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-dropdown: 0 4px 16px rgba(68, 64, 60, 0.1);
+  --shadow-ambient: 12px 12px 32px -4px rgba(68, 64, 60, 0.06);
+}
+
+html {
+  background-color: var(--color-page-bg);
+  color: var(--color-text-body);
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-highest);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
