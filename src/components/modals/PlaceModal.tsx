@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
+import { Star } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { Button } from '../shared/Button'
 import { Input, TextArea, Select } from '../shared/Input'
+import { PlaceSearch } from '../shared/PlaceSearch'
+import { PlacePhoto } from '../shared/PlacePhoto'
 import { useTripStore } from '../../stores/tripStore'
 import { useUIStore } from '../../stores/uiStore'
 import { PLACE_CATEGORIES, PRIORITIES } from '../../utils/categories'
 import { CATEGORY_CONFIG, PRIORITY_CONFIG } from '../../utils/categories'
+import type { PlaceDetails } from '../../services/googlePlaces'
 import type { PlaceCategory, PlacePriority } from '../../types'
 
 export function PlaceModal() {
@@ -27,6 +31,7 @@ export function PlaceModal() {
   const [name, setName] = useState('')
   const [category, setCategory] = useState<PlaceCategory>('food')
   const [area, setArea] = useState('')
+  const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [priority, setPriority] = useState<PlacePriority>('want-to')
   const [link, setLink] = useState('')
@@ -35,30 +40,58 @@ export function PlaceModal() {
   const [listIds, setListIds] = useState<string[]>([])
   const [showDelete, setShowDelete] = useState(false)
 
+  // Google Places fields
+  const [googlePlaceId, setGooglePlaceId] = useState<string | undefined>()
+  const [photoName, setPhotoName] = useState<string | undefined>()
+  const [rating, setRating] = useState<number | undefined>()
+  const [websiteUri, setWebsiteUri] = useState<string | undefined>()
+
   useEffect(() => {
     if (isOpen && existing) {
       setName(existing.name)
       setCategory(existing.category)
       setArea(existing.area || '')
+      setAddress(existing.address || '')
       setNotes(existing.notes)
       setPriority(existing.priority)
       setLink(existing.links[0] || '')
       setLat(existing.lat != null ? String(existing.lat) : '')
       setLng(existing.lng != null ? String(existing.lng) : '')
       setListIds(existing.listIds)
+      setGooglePlaceId(existing.googlePlaceId)
+      setPhotoName(existing.photoName)
+      setRating(existing.rating)
+      setWebsiteUri(existing.websiteUri)
     } else if (isOpen) {
       setName('')
       setCategory('food')
       setArea('')
+      setAddress('')
       setNotes('')
       setPriority('want-to')
       setLink('')
       setLat('')
       setLng('')
       setListIds([])
+      setGooglePlaceId(undefined)
+      setPhotoName(undefined)
+      setRating(undefined)
+      setWebsiteUri(undefined)
     }
     setShowDelete(false)
   }, [isOpen, existing])
+
+  const handlePlaceSelected = (details: PlaceDetails) => {
+    setName(details.name)
+    setAddress(details.address)
+    setLat(details.lat ? String(details.lat) : '')
+    setLng(details.lng ? String(details.lng) : '')
+    setGooglePlaceId(details.placeId)
+    setPhotoName(details.photoName)
+    setRating(details.rating)
+    setWebsiteUri(details.websiteUri)
+    if (details.websiteUri && !link) setLink(details.websiteUri)
+  }
 
   const handleSave = async () => {
     if (!name.trim() || !trip) return
@@ -66,14 +99,33 @@ export function PlaceModal() {
     const parsedLat = lat.trim() ? parseFloat(lat) : undefined
     const parsedLng = lng.trim() ? parseFloat(lng) : undefined
 
+    const placeData = {
+      name: name.trim(),
+      category,
+      area: area.trim(),
+      address: address.trim(),
+      notes,
+      priority,
+      links,
+      listIds,
+      lat: parsedLat,
+      lng: parsedLng,
+      googlePlaceId,
+      photoName,
+      rating,
+      websiteUri,
+    }
+
     if (isEdit && existing) {
-      await updatePlace(existing.id, { name: name.trim(), category, area: area.trim(), notes, priority, links, listIds, lat: parsedLat, lng: parsedLng })
+      await updatePlace(existing.id, placeData)
       showToast(`Updated "${name.trim()}"`)
     } else {
       await addPlace({
-        tripId: trip.id, name: name.trim(), category, area: area.trim(), notes,
-        priority, links, listIds, dayIndex: null, orderInDay: 0, timeSlot: '',
-        lat: parsedLat, lng: parsedLng,
+        tripId: trip.id,
+        ...placeData,
+        dayIndex: null,
+        orderInDay: 0,
+        timeSlot: '',
       })
       showToast(`Added "${name.trim()}"`)
     }
@@ -92,6 +144,8 @@ export function PlaceModal() {
       prev.includes(listId) ? prev.filter((id) => id !== listId) : [...prev, listId]
     )
   }
+
+  const hasGoogleData = !!googlePlaceId
 
   return (
     <Modal
@@ -115,13 +169,70 @@ export function PlaceModal() {
       }
     >
       <div className="space-y-4">
-        <Input
-          label="Name"
-          placeholder="e.g., Senso-ji Temple"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-        />
+        {/* Google Places Search */}
+        <div>
+          <label className="text-xs font-medium uppercase tracking-widest text-text-muted block mb-1.5">
+            Search Google Places
+          </label>
+          <PlaceSearch onSelect={handlePlaceSelected} />
+        </div>
+
+        {/* Photo preview + Google badge when linked */}
+        {hasGoogleData && (
+          <div className="flex items-center gap-3 p-3 bg-surface-high rounded-[10px]">
+            <PlacePhoto
+              photoName={photoName}
+              category={category}
+              className="w-14 h-14 rounded-[8px] flex-shrink-0"
+              width={120}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Google Places</span>
+                {rating && (
+                  <span className="flex items-center gap-0.5 text-[11px] font-medium text-amber-500">
+                    <Star size={10} fill="currentColor" />
+                    {rating.toFixed(1)}
+                  </span>
+                )}
+              </div>
+              {address && <p className="text-xs text-text-muted truncate">{address}</p>}
+              {websiteUri && (
+                <a
+                  href={websiteUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary hover:underline truncate block"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {websiteUri.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setGooglePlaceId(undefined)
+                setPhotoName(undefined)
+                setRating(undefined)
+                setWebsiteUri(undefined)
+                setAddress('')
+              }}
+              className="text-[10px] text-text-placeholder hover:text-text-muted transition-colors cursor-pointer flex-shrink-0"
+            >
+              Unlink
+            </button>
+          </div>
+        )}
+
+        <div className="border-t border-border-light pt-4">
+          <Input
+            label="Name"
+            placeholder="e.g., Senso-ji Temple"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus={!hasGoogleData}
+          />
+        </div>
 
         <div className="flex gap-3">
           <div className="flex-1">

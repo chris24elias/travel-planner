@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { MapPin, Plane } from 'lucide-react'
+import { MapPin, Plane, Sparkles } from 'lucide-react'
 import { Button } from '../shared/Button'
 import { Input } from '../shared/Input'
 import { useTripStore } from '../../stores/tripStore'
+import { prepareSeedData } from '../../data/seed'
 
 export function WelcomeScreen() {
   const createTrip = useTripStore((s) => s.createTrip)
+  const importTrip = useTripStore((s) => s.importTrip)
+  const loadTrip = useTripStore((s) => s.loadTrip)
 
   const [name, setName] = useState('')
   const [destination, setDestination] = useState('')
@@ -85,7 +88,30 @@ export function WelcomeScreen() {
           </Button>
         </div>
 
-        <p className="text-center text-xs text-text-placeholder mt-6">
+        <div className="text-center mt-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-px bg-border-light" />
+            <span className="text-xs text-text-placeholder">or</span>
+            <div className="flex-1 h-px bg-border-light" />
+          </div>
+          <Button
+            variant="secondary"
+            icon={<Sparkles size={16} />}
+            className="w-full"
+            onClick={async () => {
+              const data = prepareSeedData()
+              await importTrip(data)
+              await loadTrip()
+            }}
+          >
+            Load Japan 2026 Trip
+          </Button>
+          <p className="text-xs text-text-placeholder mt-3">
+            Pre-loaded with 50+ places, itinerary, notes, and packing list
+          </p>
+        </div>
+
+        <p className="text-center text-xs text-text-placeholder mt-4">
           All data is stored locally on your device. No account needed.
         </p>
       </div>

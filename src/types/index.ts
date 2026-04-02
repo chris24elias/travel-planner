@@ -15,6 +15,7 @@ export type ReservationCategory = 'dining' | 'transport' | 'activity'
 export type AppSection =
   | 'overview'
   | 'itinerary'
+  | 'kanban'
   | 'accommodations'
   | 'reservations'
   | 'places'
@@ -49,6 +50,11 @@ export interface Place {
   orderInDay?: number
   timeSlot?: string
   listIds: string[]
+  // Google Places data
+  googlePlaceId?: string
+  photoName?: string   // resource name: "places/{id}/photos/{ref}"
+  rating?: number
+  websiteUri?: string
   createdAt: string
   updatedAt: string
 }
@@ -60,6 +66,8 @@ export interface Accommodation {
   checkIn: string
   checkOut: string
   address?: string
+  lat?: number
+  lng?: number
   confirmationNumber?: string
   notes: string
   link?: string

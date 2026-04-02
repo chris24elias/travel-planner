@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { db } from '../db/database'
 import { generateId, now } from '../utils/ids'
+import { useUndoStore } from './undoStore'
 import type {
   Trip,
   Place,
@@ -16,6 +17,27 @@ import type {
 
 const APP_VERSION = '0.1.0'
 
+const ACTIVE_TRIP_KEY = 'tabi_active_trip_id'
+
+async function loadTripData(tripId: string) {
+  const [trip, places, accommodations, reservations, customLists, packingItems, notes, dayNotes, historyEntries] =
+    await Promise.all([
+      db.trips.get(tripId),
+      db.places.where('tripId').equals(tripId).toArray(),
+      db.accommodations.where('tripId').equals(tripId).toArray(),
+      db.reservations.where('tripId').equals(tripId).toArray(),
+      db.customLists.where('tripId').equals(tripId).toArray(),
+      db.packingItems.where('tripId').equals(tripId).toArray(),
+      db.notes.where('tripId').equals(tripId).toArray(),
+      db.dayNotes.where('tripId').equals(tripId).toArray(),
+      db.historyEntries.toArray(),
+    ])
+  return {
+    trip: trip ?? null, places, accommodations, reservations,
+    customLists, packingItems, notes, dayNotes, historyEntries,
+  }
+}
+
 interface TripState {
   trip: Trip | null
   places: Place[]
@@ -27,14 +49,21 @@ interface TripState {
   dayNotes: DayNote[]
   historyEntries: HistoryEntry[]
   isLoaded: boolean
+  allTrips: Trip[]
+  tripStats: Record<string, { placeCount: number; reservationCount: number }>
+  activeTripId: string | null
 
   // Initialization
   loadTrip: () => Promise<void>
+  loadAllTrips: () => Promise<void>
+  selectTrip: (id: string) => Promise<void>
+  clearActiveTrip: () => void
   hasTrip: () => boolean
 
   // Trip CRUD
   createTrip: (data: Pick<Trip, 'name' | 'destination' | 'startDate' | 'endDate'>) => Promise<Trip>
   updateTrip: (data: Partial<Trip>) => Promise<void>
+  updateTripById: (id: string, data: Partial<Pick<Trip, 'name' | 'destination' | 'startDate' | 'endDate'>>) => Promise<void>
 
   // Place CRUD
   addPlace: (data: Omit<Place, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Place>
@@ -55,6 +84,7 @@ interface TripState {
   addList: (data: Pick<CustomList, 'tripId' | 'name' | 'color' | 'icon'>) => Promise<CustomList>
   updateList: (id: string, data: Partial<CustomList>) => Promise<void>
   deleteList: (id: string) => Promise<void>
+  reorderLists: (orderedIds: string[]) => Promise<void>
 
   // PackingItem CRUD
   addPackingItem: (data: Pick<PackingItem, 'tripId' | 'name' | 'category'>) => Promise<PackingItem>
@@ -90,26 +120,61 @@ export const useTripStore = create<TripState>((set, get) => ({
   dayNotes: [],
   historyEntries: [],
   isLoaded: false,
+  allTrips: [],
+  tripStats: {},
+  activeTripId: null,
+
+  loadAllTrips: async () => {
+    const trips = await db.trips.toArray()
+    // Load place + reservation counts for each trip in parallel
+    const statsEntries = await Promise.all(
+      trips.map(async (t) => {
+        const [placeCount, reservationCount] = await Promise.all([
+          db.places.where('tripId').equals(t.id).count(),
+          db.reservations.where('tripId').equals(t.id).count(),
+        ])
+        return [t.id, { placeCount, reservationCount }] as const
+      })
+    )
+    const tripStats = Object.fromEntries(statsEntries)
+
+    // Restore active trip from localStorage
+    const storedId = localStorage.getItem(ACTIVE_TRIP_KEY)
+    const storedTrip = storedId ? trips.find((t) => t.id === storedId) : null
+
+    if (storedTrip) {
+      const data = await loadTripData(storedTrip.id)
+      set({ allTrips: trips, tripStats, activeTripId: storedTrip.id, isLoaded: true, ...data })
+    } else {
+      set({ allTrips: trips, tripStats, activeTripId: null, isLoaded: true })
+    }
+  },
 
   loadTrip: async () => {
-    const trips = await db.trips.toArray()
-    if (trips.length === 0) {
-      set({ isLoaded: true })
-      return
-    }
-    const trip = trips[0]
-    const [places, accommodations, reservations, customLists, packingItems, notes, dayNotes, historyEntries] =
-      await Promise.all([
-        db.places.where('tripId').equals(trip.id).toArray(),
-        db.accommodations.where('tripId').equals(trip.id).toArray(),
-        db.reservations.where('tripId').equals(trip.id).toArray(),
-        db.customLists.where('tripId').equals(trip.id).toArray(),
-        db.packingItems.where('tripId').equals(trip.id).toArray(),
-        db.notes.where('tripId').equals(trip.id).toArray(),
-        db.dayNotes.where('tripId').equals(trip.id).toArray(),
-        db.historyEntries.toArray(),
-      ])
-    set({ trip, places, accommodations, reservations, customLists, packingItems, notes, dayNotes, historyEntries, isLoaded: true })
+    await get().loadAllTrips()
+  },
+
+  selectTrip: async (id) => {
+    localStorage.setItem(ACTIVE_TRIP_KEY, id)
+    const data = await loadTripData(id)
+    if (!data.trip) return
+    set({ activeTripId: id, ...data })
+  },
+
+  clearActiveTrip: () => {
+    localStorage.removeItem(ACTIVE_TRIP_KEY)
+    set({
+      activeTripId: null,
+      trip: null,
+      places: [],
+      accommodations: [],
+      reservations: [],
+      customLists: [],
+      packingItems: [],
+      notes: [],
+      dayNotes: [],
+      historyEntries: [],
+    })
   },
 
   hasTrip: () => get().trip !== null,
@@ -118,7 +183,13 @@ export const useTripStore = create<TripState>((set, get) => ({
   createTrip: async (data) => {
     const trip: Trip = { ...data, id: generateId(), createdAt: now(), updatedAt: now() }
     await db.trips.add(trip)
-    set({ trip })
+    localStorage.setItem(ACTIVE_TRIP_KEY, trip.id)
+    set((s) => ({
+      trip,
+      activeTripId: trip.id,
+      allTrips: [...s.allTrips, trip],
+      tripStats: { ...s.tripStats, [trip.id]: { placeCount: 0, reservationCount: 0 } },
+    }))
     await get().addHistoryEntry(`Created trip "${trip.name}"`)
     return trip
   },
@@ -132,8 +203,21 @@ export const useTripStore = create<TripState>((set, get) => ({
     await get().addHistoryEntry(`Updated trip details`)
   },
 
+  updateTripById: async (id, data) => {
+    const existing = await db.trips.get(id)
+    if (!existing) return
+    const updated: Trip = { ...existing, ...data, updatedAt: now() }
+    await db.trips.put(updated)
+    set((s) => ({
+      allTrips: s.allTrips.map((t) => (t.id === id ? updated : t)),
+      // Also update active trip state if this is the currently loaded trip
+      trip: s.activeTripId === id ? updated : s.trip,
+    }))
+  },
+
   // Places
   addPlace: async (data) => {
+    await useUndoStore.getState().pushSnapshot(`Add "${data.name}"`)
     const place: Place = { ...data, id: generateId(), createdAt: now(), updatedAt: now() }
     await db.places.add(place)
     set((s) => ({ places: [...s.places, place] }))
@@ -144,6 +228,8 @@ export const useTripStore = create<TripState>((set, get) => ({
   updatePlace: async (id, data) => {
     const place = get().places.find((p) => p.id === id)
     if (!place) return
+    await useUndoStore.getState().pushSnapshot(`Update "${place.name}"`)
+
     const updated = { ...place, ...data, updatedAt: now() }
     await db.places.put(updated)
     set((s) => ({ places: s.places.map((p) => (p.id === id ? updated : p)) }))
@@ -152,6 +238,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   deletePlace: async (id) => {
     const place = get().places.find((p) => p.id === id)
+    await useUndoStore.getState().pushSnapshot(`Remove "${place?.name}"`)
     await db.places.delete(id)
     set((s) => ({ places: s.places.filter((p) => p.id !== id) }))
     if (place) await get().addHistoryEntry(`Removed "${place.name}"`)
@@ -159,6 +246,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   // Accommodations
   addAccommodation: async (data) => {
+    await useUndoStore.getState().pushSnapshot(`Add "${data.name}"`)
     const acc: Accommodation = { ...data, id: generateId(), createdAt: now(), updatedAt: now() }
     await db.accommodations.add(acc)
     set((s) => ({ accommodations: [...s.accommodations, acc] }))
@@ -169,6 +257,8 @@ export const useTripStore = create<TripState>((set, get) => ({
   updateAccommodation: async (id, data) => {
     const acc = get().accommodations.find((a) => a.id === id)
     if (!acc) return
+    await useUndoStore.getState().pushSnapshot(`Update "${acc.name}"`)
+
     const updated = { ...acc, ...data, updatedAt: now() }
     await db.accommodations.put(updated)
     set((s) => ({ accommodations: s.accommodations.map((a) => (a.id === id ? updated : a)) }))
@@ -177,6 +267,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   deleteAccommodation: async (id) => {
     const acc = get().accommodations.find((a) => a.id === id)
+    await useUndoStore.getState().pushSnapshot(`Remove "${acc?.name}"`)
     await db.accommodations.delete(id)
     set((s) => ({ accommodations: s.accommodations.filter((a) => a.id !== id) }))
     if (acc) await get().addHistoryEntry(`Removed accommodation "${acc.name}"`)
@@ -184,6 +275,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   // Reservations
   addReservation: async (data) => {
+    await useUndoStore.getState().pushSnapshot(`Add "${data.name}"`)
     const res: Reservation = { ...data, id: generateId(), createdAt: now(), updatedAt: now() }
     await db.reservations.add(res)
     set((s) => ({ reservations: [...s.reservations, res] }))
@@ -202,6 +294,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   deleteReservation: async (id) => {
     const res = get().reservations.find((r) => r.id === id)
+    await useUndoStore.getState().pushSnapshot(`Remove "${res?.name}"`)
     await db.reservations.delete(id)
     set((s) => ({ reservations: s.reservations.filter((r) => r.id !== id) }))
     if (res) await get().addHistoryEntry(`Removed reservation "${res.name}"`)
@@ -232,8 +325,19 @@ export const useTripStore = create<TripState>((set, get) => ({
     await get().addHistoryEntry(`Updated list "${updated.name}"`)
   },
 
+  reorderLists: async (orderedIds) => {
+    const lists = get().customLists
+    const updated = orderedIds.map((id, index) => {
+      const list = lists.find((l) => l.id === id)!
+      return { ...list, orderIndex: index, updatedAt: now() }
+    })
+    await Promise.all(updated.map((l) => db.customLists.put(l)))
+    set({ customLists: updated })
+  },
+
   deleteList: async (id) => {
     const list = get().customLists.find((l) => l.id === id)
+    await useUndoStore.getState().pushSnapshot(`Delete list "${list?.name}"`)
     await db.customLists.delete(id)
     set((s) => ({ customLists: s.customLists.filter((l) => l.id !== id) }))
     // Remove list references from places
@@ -273,6 +377,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   deletePackingItem: async (id) => {
     const item = get().packingItems.find((i) => i.id === id)
+    await useUndoStore.getState().pushSnapshot(`Remove "${item?.name}"`)
     await db.packingItems.delete(id)
     set((s) => ({ packingItems: s.packingItems.filter((i) => i.id !== id) }))
     if (item) await get().addHistoryEntry(`Removed "${item.name}" from packing list`)
@@ -314,6 +419,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   deleteNote: async (id) => {
     const note = get().notes.find((n) => n.id === id)
+    await useUndoStore.getState().pushSnapshot(`Delete note "${note?.title}"`)
     await db.notes.delete(id)
     set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }))
     if (note) await get().addHistoryEntry(`Deleted note "${note.title}"`)
@@ -402,6 +508,15 @@ export const useTripStore = create<TripState>((set, get) => ({
       notes: doc.notes,
       dayNotes: doc.dayNotes,
     })
+    localStorage.setItem(ACTIVE_TRIP_KEY, doc.trip.id)
+    set((s) => ({
+      activeTripId: doc.trip.id,
+      allTrips: [...s.allTrips.filter((t) => t.id !== doc.trip.id), doc.trip],
+      tripStats: {
+        ...s.tripStats,
+        [doc.trip.id]: { placeCount: doc.places.length, reservationCount: doc.reservations.length },
+      },
+    }))
     await get().addHistoryEntry('Imported trip from JSON')
   },
 }))

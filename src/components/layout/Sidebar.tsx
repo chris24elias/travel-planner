@@ -1,11 +1,14 @@
 import {
-  LayoutDashboard, CalendarDays, Building2, Ticket, MapPin,
+  LayoutDashboard, CalendarDays, Columns3, Building2, Ticket, MapPin,
   Map, Luggage, StickyNote, History, Download, Upload,
-  ChevronRight, ChevronDown, Plus,
+  ChevronRight, ChevronDown, Plus, ArrowLeft, Pencil, Undo2,
 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 import { useUIStore } from '../../stores/uiStore'
 import { useTripStore } from '../../stores/tripStore'
+import { useUndoStore } from '../../stores/undoStore'
 import { getDaysUntil, formatDateShort } from '../../utils/dates'
+import { EditTripModal } from '../home/EditTripModal'
 import type { AppSection } from '../../types'
 
 interface NavItem {
@@ -17,6 +20,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'itinerary', label: 'Itinerary', icon: CalendarDays },
+  { id: 'kanban', label: 'Kanban', icon: Columns3 },
   { id: 'accommodations', label: 'Accommodations', icon: Building2 },
   { id: 'reservations', label: 'Reservations', icon: Ticket },
   { id: 'places', label: 'Places', icon: MapPin },
@@ -36,6 +40,34 @@ export function Sidebar() {
   const trip = useTripStore((s) => s.trip)
   const customLists = useTripStore((s) => s.customLists)
   const exportTrip = useTripStore((s) => s.exportTrip)
+  const clearActiveTrip = useTripStore((s) => s.clearActiveTrip)
+  const canUndo = useUndoStore((s) => s.canUndo)
+  const undo = useUndoStore((s) => s.undo)
+  const loadTrip = useTripStore((s) => s.loadTrip)
+  const showToast = useUIStore((s) => s.showToast)
+  const [editingTrip, setEditingTrip] = useState(false)
+
+  const handleUndo = useCallback(async () => {
+    const description = await undo()
+    if (description) {
+      await loadTrip()
+      showToast(`↩ Undid: ${description}`)
+    }
+  }, [undo, loadTrip, showToast])
+
+  // Cmd+Z / Ctrl+Z keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        const tag = (e.target as HTMLElement).tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+        e.preventDefault()
+        handleUndo()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleUndo])
 
   const daysUntil = trip ? getDaysUntil(trip.startDate) : 0
 
@@ -73,10 +105,43 @@ export function Sidebar() {
 
   return (
     <aside className="w-60 h-screen bg-sidebar-bg border-r border-border-light flex flex-col fixed left-0 top-0 z-40">
+      {/* Top row: All Trips + Undo */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-1">
+        <button
+          onClick={clearActiveTrip}
+          className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-text-body transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-surface-high"
+        >
+          <ArrowLeft size={11} />
+          All Trips
+        </button>
+        <button
+          onClick={handleUndo}
+          disabled={!canUndo}
+          className={`flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-all cursor-pointer ${
+            canUndo
+              ? 'text-text-muted hover:text-text-body hover:bg-surface-high'
+              : 'text-text-placeholder cursor-not-allowed'
+          }`}
+          title="Undo (⌘Z)"
+        >
+          <Undo2 size={12} />
+          Undo
+        </button>
+      </div>
+
       {/* Trip Header */}
       {trip && (
-        <div className="px-5 pt-6 pb-4">
-          <h1 className="text-lg font-bold font-heading text-text-heading">{trip.name}</h1>
+        <div className="px-5 pt-3 pb-4 group">
+          <div className="flex items-start justify-between gap-1">
+            <h1 className="text-lg font-bold font-heading text-text-heading leading-tight">{trip.name}</h1>
+            <button
+              onClick={() => setEditingTrip(true)}
+              className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-text-placeholder hover:text-text-muted hover:bg-surface-high transition-all cursor-pointer opacity-0 group-hover:opacity-100 mt-0.5"
+              title="Edit trip details"
+            >
+              <Pencil size={12} />
+            </button>
+          </div>
           <p className="text-xs text-text-muted mt-0.5">
             {formatDateShort(trip.startDate)} — {formatDateShort(trip.endDate)}
           </p>
@@ -180,6 +245,10 @@ export function Sidebar() {
           Import JSON
         </button>
       </div>
+
+      {editingTrip && trip && (
+        <EditTripModal trip={trip} onClose={() => setEditingTrip(false)} />
+      )}
     </aside>
   )
 }
