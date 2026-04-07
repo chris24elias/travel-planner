@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   GripVertical, Plus, Pencil, Trash2, Check, X,
-  MoreHorizontal, Star, LayoutGrid, List, ChevronRight,
-  MapPin, Globe, ExternalLink,
+  MoreHorizontal, Star, LayoutGrid, List, ChevronRight, ChevronDown, ChevronUp,
+  MapPin, Globe, ExternalLink, Phone, Clock,
 } from 'lucide-react'
 import { PlacePhoto } from '../shared/PlacePhoto'
 import { CategoryBadge, PriorityBadge } from '../shared/CategoryBadge'
@@ -557,9 +557,13 @@ function PlaceDetailView({
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const customLists = useTripStore((s) => s.customLists)
+  const [hoursOpen, setHoursOpen] = useState(false)
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0)
 
   useEffect(() => {
     if (!place) return
+    setHoursOpen(false)
+    setActivePhotoIdx(0)
     const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
@@ -567,7 +571,8 @@ function PlaceDetailView({
 
   if (!place) return null
 
-  const photos = place.photoName ? [place.photoName] : []
+  const photos = place.photoNames?.length ? place.photoNames : place.photoName ? [place.photoName] : []
+  const heroPhoto = photos[activePhotoIdx]
   const placeLists = customLists.filter((l) => place.listIds.includes(l.id))
 
   return (
@@ -580,10 +585,10 @@ function PlaceDetailView({
         className="max-w-md w-full bg-white rounded-[16px] shadow-modal overflow-hidden max-h-[85vh] flex flex-col"
         style={{ animation: 'modalIn 0.15s ease-out' }}
       >
-        {/* Hero photo */}
+        {/* Hero photo + gallery */}
         <div className="relative flex-shrink-0" style={{ height: '200px' }}>
-          {photos[0] ? (
-            <img src={getPhotoUrl(photos[0], 800)} alt={place.name} className="w-full h-full object-cover" />
+          {heroPhoto ? (
+            <img src={getPhotoUrl(heroPhoto, 800)} alt={place.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-surface-high flex items-center justify-center">
               <PlacePhoto photoName={undefined} category={place.category} className="w-full h-full" />
@@ -595,6 +600,22 @@ function PlaceDetailView({
           >
             <X size={16} className="text-white" />
           </button>
+          {/* Photo gallery strip */}
+          {photos.length > 1 && (
+            <div className="absolute bottom-2 right-2 flex gap-1">
+              {photos.map((ph, i) => (
+                <button
+                  key={ph}
+                  onClick={(e) => { e.stopPropagation(); setActivePhotoIdx(i) }}
+                  className={`w-7 h-7 rounded-[6px] overflow-hidden border-2 transition-all cursor-pointer ${
+                    i === activePhotoIdx ? 'border-white' : 'border-transparent opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <img src={getPhotoUrl(ph, 80)} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -620,17 +641,52 @@ function PlaceDetailView({
             </div>
           )}
 
-          {place.area && (
+          {place.area && !place.address?.includes(place.area) && (
             <p className="text-xs text-text-muted">{place.area}</p>
           )}
 
-          {place.notes && (
-            <p className="text-xs text-text-body leading-relaxed bg-surface-high rounded-[8px] px-3 py-2">{place.notes}</p>
+          {place.openingHours && place.openingHours.length > 0 && (
+            <div>
+              <button
+                onClick={() => setHoursOpen((v) => !v)}
+                className="flex items-center gap-2 text-xs text-text-body cursor-pointer hover:text-text-heading transition-colors w-full"
+              >
+                <Clock size={13} className="text-text-muted flex-shrink-0" />
+                <span className="flex-1 text-left">Opening hours</span>
+                {hoursOpen ? <ChevronUp size={12} className="text-text-muted" /> : <ChevronDown size={12} className="text-text-muted" />}
+              </button>
+              {hoursOpen && (
+                <div className="mt-2 ml-5 space-y-0.5">
+                  {place.openingHours.map((h) => (
+                    <p key={h} className="text-[11px] text-text-muted">{h}</p>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
-          {place.links.length > 0 && (
+          {place.websiteUri && (
+            <a
+              href={place.websiteUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs text-primary hover:underline"
+            >
+              <Globe size={13} className="flex-shrink-0" />
+              <span className="truncate">{place.websiteUri.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+            </a>
+          )}
+
+          {place.phoneNumber && (
+            <div className="flex items-center gap-2 text-xs text-text-body">
+              <Phone size={13} className="text-text-muted flex-shrink-0" />
+              <span>{place.phoneNumber}</span>
+            </div>
+          )}
+
+          {place.links.length > 0 && !place.links.every((l) => l === place.websiteUri) && (
             <div className="space-y-1">
-              {place.links.filter(Boolean).map((link, i) => (
+              {place.links.filter((l) => l && l !== place.websiteUri).map((link, i) => (
                 <a
                   key={i}
                   href={link}
@@ -643,6 +699,10 @@ function PlaceDetailView({
                 </a>
               ))}
             </div>
+          )}
+
+          {place.notes && (
+            <p className="text-xs text-text-body leading-relaxed bg-surface-high rounded-[8px] px-3 py-2">{place.notes}</p>
           )}
 
           {place.dayIndex != null && (

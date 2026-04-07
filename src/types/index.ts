@@ -15,6 +15,7 @@ export type ReservationCategory = 'dining' | 'transport' | 'activity'
 export type AppSection =
   | 'overview'
   | 'itinerary'
+  | 'itinerary2'
   | 'kanban'
   | 'accommodations'
   | 'reservations'
@@ -30,6 +31,7 @@ export interface Trip {
   destination: string
   startDate: string
   endDate: string
+  dayLabels?: Record<number, string>
   createdAt: string
   updatedAt: string
 }
@@ -53,8 +55,12 @@ export interface Place {
   // Google Places data
   googlePlaceId?: string
   photoName?: string   // resource name: "places/{id}/photos/{ref}"
+  photoNames?: string[]  // all photo resource names (up to 5)
   rating?: number
   websiteUri?: string
+  phoneNumber?: string
+  openingHours?: string[]  // weekday descriptions e.g. "Monday: 9:00 AM – 5:00 PM"
+  types?: string[]  // Google place types e.g. ["restaurant", "food"]
   createdAt: string
   updatedAt: string
 }
@@ -71,6 +77,11 @@ export interface Accommodation {
   confirmationNumber?: string
   notes: string
   link?: string
+  googlePlaceId?: string
+  photoName?: string
+  rating?: number
+  websiteUri?: string
+  phoneNumber?: string
   createdAt: string
   updatedAt: string
 }
@@ -128,6 +139,16 @@ export interface DayNote {
   updatedAt: string
 }
 
+export interface InlineNote {
+  id: string
+  tripId: string
+  dayIndex: number
+  orderInDay: number
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface TripDocument {
   version: string
   exportedAt: string
@@ -140,6 +161,7 @@ export interface TripDocument {
   packingItems: PackingItem[]
   notes: Note[]
   dayNotes: DayNote[]
+  inlineNotes?: InlineNote[]
 }
 
 export interface HistoryEntry {

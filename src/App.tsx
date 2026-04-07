@@ -13,6 +13,7 @@ import { PackingPage } from './components/packing/PackingPage'
 import { NotesPage } from './components/notes/NotesPage'
 import { HistoryPage } from './components/history/HistoryPage'
 import { KanbanPage } from './components/kanban/KanbanPage'
+import { Itinerary2Page } from './components/itinerary2/Itinerary2Page'
 import { PlaceModal } from './components/modals/PlaceModal'
 import { AccommodationModal } from './components/modals/AccommodationModal'
 import { ReservationModal } from './components/modals/ReservationModal'
@@ -25,6 +26,7 @@ function SectionRouter() {
   switch (activeSection) {
     case 'overview': return <OverviewPage />
     case 'itinerary': return <ItineraryPage />
+    case 'itinerary2': return <Itinerary2Page />
     case 'kanban': return <KanbanPage />
     case 'accommodations': return <AccommodationsPage />
     case 'reservations': return <ReservationsPage />

@@ -6,6 +6,7 @@ import type { PlaceSuggestion, PlaceDetails } from '../../services/googlePlaces'
 interface PlaceSearchProps {
   onSelect: (details: PlaceDetails) => void
   placeholder?: string
+  savedPlaceIds?: Set<string>
 }
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -17,7 +18,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced
 }
 
-export function PlaceSearch({ onSelect, placeholder = 'Search Google Places…' }: PlaceSearchProps) {
+export function PlaceSearch({ onSelect, placeholder = 'Search Google Places…', savedPlaceIds }: PlaceSearchProps) {
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -126,12 +127,17 @@ export function PlaceSearch({ onSelect, placeholder = 'Search Google Places…' 
               } ${i > 0 ? 'border-t border-border-light' : ''}`}
             >
               <MapPin size={14} className="text-primary flex-shrink-0 mt-0.5" />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-text-heading truncate">{s.mainText}</div>
                 {s.secondaryText && (
                   <div className="text-xs text-text-muted truncate mt-0.5">{s.secondaryText}</div>
                 )}
               </div>
+              {savedPlaceIds?.has(s.placeId) && (
+                <span className="flex-shrink-0 text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full mt-0.5">
+                  Saved
+                </span>
+              )}
             </button>
           ))}
           <div className="px-4 py-2 border-t border-border-light flex justify-end">

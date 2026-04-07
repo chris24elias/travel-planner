@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Star, Phone } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { Button } from '../shared/Button'
 import { Input, TextArea } from '../shared/Input'
+import { PlaceSearch } from '../shared/PlaceSearch'
+import type { PlaceDetails } from '../../services/googlePlaces'
 import { useTripStore } from '../../stores/tripStore'
 import { useUIStore } from '../../stores/uiStore'
 import { getNights } from '../../utils/dates'
@@ -28,6 +31,13 @@ export function AccommodationModal() {
   const [confirmationNumber, setConfirmationNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [link, setLink] = useState('')
+  const [googlePlaceId, setGooglePlaceId] = useState<string | undefined>()
+  const [lat, setLat] = useState<number | undefined>()
+  const [lng, setLng] = useState<number | undefined>()
+  const [photoName, setPhotoName] = useState<string | undefined>()
+  const [rating, setRating] = useState<number | undefined>()
+  const [websiteUri, setWebsiteUri] = useState<string | undefined>()
+  const [phoneNumber, setPhoneNumber] = useState<string | undefined>()
   const [showDelete, setShowDelete] = useState(false)
 
   useEffect(() => {
@@ -39,6 +49,13 @@ export function AccommodationModal() {
       setConfirmationNumber(existing.confirmationNumber || '')
       setNotes(existing.notes)
       setLink(existing.link || '')
+      setGooglePlaceId(existing.googlePlaceId)
+      setLat(existing.lat)
+      setLng(existing.lng)
+      setPhotoName(existing.photoName)
+      setRating(existing.rating)
+      setWebsiteUri(existing.websiteUri)
+      setPhoneNumber(existing.phoneNumber)
     } else if (isOpen) {
       setName('')
       setCheckIn(trip?.startDate || '')
@@ -47,24 +64,49 @@ export function AccommodationModal() {
       setConfirmationNumber('')
       setNotes('')
       setLink('')
+      setGooglePlaceId(undefined)
+      setLat(undefined)
+      setLng(undefined)
+      setPhotoName(undefined)
+      setRating(undefined)
+      setWebsiteUri(undefined)
+      setPhoneNumber(undefined)
     }
     setShowDelete(false)
   }, [isOpen, existing, trip])
 
   const nights = checkIn && checkOut && checkOut > checkIn ? getNights(checkIn, checkOut) : 0
 
+  const handlePlaceSelect = useCallback((details: PlaceDetails) => {
+    setName(details.name)
+    setAddress(details.address)
+    setGooglePlaceId(details.placeId)
+    setLat(details.lat)
+    setLng(details.lng)
+    setPhotoName(details.photoNames?.[0])
+    setRating(details.rating)
+    setWebsiteUri(details.websiteUri)
+    setPhoneNumber(details.phoneNumber)
+    if (details.websiteUri && !link) {
+      setLink(details.websiteUri)
+    }
+  }, [link])
+
   const handleSave = async () => {
     if (!name.trim() || !checkIn || !checkOut || !trip) return
+    const googleFields = { googlePlaceId, lat, lng, photoName, rating, websiteUri, phoneNumber }
     if (isEdit && existing) {
       await updateAccommodation(existing.id, {
         name: name.trim(), checkIn, checkOut, address: address.trim(),
         confirmationNumber: confirmationNumber.trim(), notes, link: link.trim(),
+        ...googleFields,
       })
       showToast(`Updated "${name.trim()}"`)
     } else {
       await addAccommodation({
         tripId: trip.id, name: name.trim(), checkIn, checkOut, address: address.trim(),
         confirmationNumber: confirmationNumber.trim(), notes, link: link.trim(),
+        ...googleFields,
       })
       showToast(`Added "${name.trim()}"`)
     }
@@ -98,6 +140,14 @@ export function AccommodationModal() {
       }
     >
       <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-text-body mb-1.5">Search Google Places</label>
+          <PlaceSearch
+            onSelect={handlePlaceSelect}
+            placeholder="Search for a hotel or accommodation…"
+          />
+        </div>
+
         <Input
           label="Name"
           placeholder="e.g., Hotel Gracery Shinjuku"
@@ -136,6 +186,24 @@ export function AccommodationModal() {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
         />
+
+        {(rating || phoneNumber) && (
+          <div className="flex items-center gap-4 px-3 py-2 bg-primary-light/50 rounded-[10px] text-sm text-text-body">
+            {rating && (
+              <span className="flex items-center gap-1">
+                <Star size={13} className="text-primary fill-primary" />
+                <span className="font-medium">{rating}</span>
+              </span>
+            )}
+            {phoneNumber && (
+              <span className="flex items-center gap-1.5">
+                <Phone size={13} className="text-text-muted" />
+                <span>{phoneNumber}</span>
+              </span>
+            )}
+            <span className="text-[11px] text-text-muted ml-auto">from Google</span>
+          </div>
+        )}
 
         <Input
           label="Confirmation #"

@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, CalendarDays, Columns3, Building2, Ticket, MapPin,
+  LayoutDashboard, CalendarDays, CalendarRange, Columns3, Building2, Ticket, MapPin,
   Map, Luggage, StickyNote, History, Download, Upload,
   ChevronRight, ChevronDown, Plus, ArrowLeft, Pencil, Undo2,
 } from 'lucide-react'
@@ -20,6 +20,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'itinerary', label: 'Itinerary', icon: CalendarDays },
+  { id: 'itinerary2', label: 'Itinerary 2', icon: CalendarRange },
   { id: 'kanban', label: 'Kanban', icon: Columns3 },
   { id: 'accommodations', label: 'Accommodations', icon: Building2 },
   { id: 'reservations', label: 'Reservations', icon: Ticket },

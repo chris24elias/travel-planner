@@ -11,6 +11,7 @@ import type {
   PackingItem,
   Note,
   DayNote,
+  InlineNote,
   HistoryEntry,
   TripDocument,
 } from '../types'
@@ -20,7 +21,7 @@ const APP_VERSION = '0.1.0'
 const ACTIVE_TRIP_KEY = 'tabi_active_trip_id'
 
 async function loadTripData(tripId: string) {
-  const [trip, places, accommodations, reservations, customLists, packingItems, notes, dayNotes, historyEntries] =
+  const [trip, places, accommodations, reservations, customLists, packingItems, notes, dayNotes, inlineNotes, historyEntries] =
     await Promise.all([
       db.trips.get(tripId),
       db.places.where('tripId').equals(tripId).toArray(),
@@ -30,11 +31,12 @@ async function loadTripData(tripId: string) {
       db.packingItems.where('tripId').equals(tripId).toArray(),
       db.notes.where('tripId').equals(tripId).toArray(),
       db.dayNotes.where('tripId').equals(tripId).toArray(),
+      db.inlineNotes.where('tripId').equals(tripId).toArray(),
       db.historyEntries.toArray(),
     ])
   return {
     trip: trip ?? null, places, accommodations, reservations,
-    customLists, packingItems, notes, dayNotes, historyEntries,
+    customLists, packingItems, notes, dayNotes, inlineNotes, historyEntries,
   }
 }
 
@@ -47,6 +49,7 @@ interface TripState {
   packingItems: PackingItem[]
   notes: Note[]
   dayNotes: DayNote[]
+  inlineNotes: InlineNote[]
   historyEntries: HistoryEntry[]
   isLoaded: boolean
   allTrips: Trip[]
@@ -100,6 +103,14 @@ interface TripState {
   // DayNote CRUD
   setDayNote: (tripId: string, dayIndex: number, content: string) => Promise<void>
 
+  // InlineNote CRUD
+  addInlineNote: (tripId: string, dayIndex: number, content: string) => Promise<InlineNote>
+  updateInlineNote: (id: string, data: Partial<InlineNote>) => Promise<void>
+  deleteInlineNote: (id: string) => Promise<void>
+
+  // Day Labels
+  setDayLabel: (dayIndex: number, label: string) => Promise<void>
+
   // History
   addHistoryEntry: (description: string) => Promise<void>
   clearHistory: () => Promise<void>
@@ -118,6 +129,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   packingItems: [],
   notes: [],
   dayNotes: [],
+  inlineNotes: [],
   historyEntries: [],
   isLoaded: false,
   allTrips: [],
@@ -173,6 +185,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       packingItems: [],
       notes: [],
       dayNotes: [],
+      inlineNotes: [],
       historyEntries: [],
     })
   },
@@ -440,6 +453,49 @@ export const useTripStore = create<TripState>((set, get) => ({
     await get().addHistoryEntry(`Updated Day ${dayIndex + 1} note`)
   },
 
+  // Inline Notes
+  addInlineNote: async (tripId, dayIndex, content) => {
+    const { places, inlineNotes } = get()
+    const dayPlaces = places.filter((p) => p.dayIndex === dayIndex)
+    const dayInlineNotes = inlineNotes.filter((n) => n.dayIndex === dayIndex)
+    const orderInDay = dayPlaces.length + dayInlineNotes.length
+
+    const note: InlineNote = {
+      id: generateId(), tripId, dayIndex, orderInDay, content,
+      createdAt: now(), updatedAt: now(),
+    }
+    await db.inlineNotes.add(note)
+    set((s) => ({ inlineNotes: [...s.inlineNotes, note] }))
+    await get().addHistoryEntry(`Added note to Day ${dayIndex + 1}`)
+    return note
+  },
+
+  updateInlineNote: async (id, data) => {
+    const note = get().inlineNotes.find((n) => n.id === id)
+    if (!note) return
+    const updated = { ...note, ...data, updatedAt: now() }
+    await db.inlineNotes.put(updated)
+    set((s) => ({ inlineNotes: s.inlineNotes.map((n) => (n.id === id ? updated : n)) }))
+  },
+
+  deleteInlineNote: async (id) => {
+    const note = get().inlineNotes.find((n) => n.id === id)
+    await db.inlineNotes.delete(id)
+    set((s) => ({ inlineNotes: s.inlineNotes.filter((n) => n.id !== id) }))
+    if (note) await get().addHistoryEntry(`Removed note from Day ${note.dayIndex + 1}`)
+  },
+
+  // Day Labels
+  setDayLabel: async (dayIndex, label) => {
+    const trip = get().trip
+    if (!trip) return
+    const dayLabels = { ...(trip.dayLabels || {}), [dayIndex]: label }
+    if (!label) delete dayLabels[dayIndex]
+    const updated = { ...trip, dayLabels, updatedAt: now() }
+    await db.trips.put(updated)
+    set({ trip: updated })
+  },
+
   // History
   addHistoryEntry: async (description) => {
     const entry: HistoryEntry = { id: generateId(), timestamp: now(), description }
@@ -459,7 +515,7 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   // JSON Export
   exportTrip: () => {
-    const { trip, places, accommodations, reservations, customLists, packingItems, notes, dayNotes } = get()
+    const { trip, places, accommodations, reservations, customLists, packingItems, notes, dayNotes, inlineNotes } = get()
     if (!trip) return null
     return {
       version: '1.0.0',
@@ -473,20 +529,22 @@ export const useTripStore = create<TripState>((set, get) => ({
       packingItems,
       notes,
       dayNotes,
+      inlineNotes,
     }
   },
 
   // JSON Import
   importTrip: async (doc) => {
+    const inlineNotes = doc.inlineNotes || []
     await db.transaction(
       'rw',
       db.trips, db.places, db.accommodations, db.reservations,
-      db.customLists, db.packingItems, db.notes, db.dayNotes,
+      db.customLists, db.packingItems, db.notes, db.dayNotes, db.inlineNotes,
       async () => {
         await Promise.all([
           db.trips.clear(), db.places.clear(), db.accommodations.clear(),
           db.reservations.clear(), db.customLists.clear(), db.packingItems.clear(),
-          db.notes.clear(), db.dayNotes.clear(),
+          db.notes.clear(), db.dayNotes.clear(), db.inlineNotes.clear(),
         ])
         await db.trips.add(doc.trip)
         if (doc.places.length) await db.places.bulkAdd(doc.places)
@@ -496,6 +554,7 @@ export const useTripStore = create<TripState>((set, get) => ({
         if (doc.packingItems.length) await db.packingItems.bulkAdd(doc.packingItems)
         if (doc.notes.length) await db.notes.bulkAdd(doc.notes)
         if (doc.dayNotes.length) await db.dayNotes.bulkAdd(doc.dayNotes)
+        if (inlineNotes.length) await db.inlineNotes.bulkAdd(inlineNotes)
       }
     )
     set({
@@ -507,6 +566,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       packingItems: doc.packingItems,
       notes: doc.notes,
       dayNotes: doc.dayNotes,
+      inlineNotes,
     })
     localStorage.setItem(ACTIVE_TRIP_KEY, doc.trip.id)
     set((s) => ({

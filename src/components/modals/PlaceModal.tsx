@@ -43,8 +43,12 @@ export function PlaceModal() {
   // Google Places fields
   const [googlePlaceId, setGooglePlaceId] = useState<string | undefined>()
   const [photoName, setPhotoName] = useState<string | undefined>()
+  const [photoNames, setPhotoNames] = useState<string[] | undefined>()
   const [rating, setRating] = useState<number | undefined>()
   const [websiteUri, setWebsiteUri] = useState<string | undefined>()
+  const [phoneNumber, setPhoneNumber] = useState<string | undefined>()
+  const [openingHours, setOpeningHours] = useState<string[] | undefined>()
+  const [placeTypes, setPlaceTypes] = useState<string[] | undefined>()
 
   useEffect(() => {
     if (isOpen && existing) {
@@ -60,8 +64,12 @@ export function PlaceModal() {
       setListIds(existing.listIds)
       setGooglePlaceId(existing.googlePlaceId)
       setPhotoName(existing.photoName)
+      setPhotoNames(existing.photoNames)
       setRating(existing.rating)
       setWebsiteUri(existing.websiteUri)
+      setPhoneNumber(existing.phoneNumber)
+      setOpeningHours(existing.openingHours)
+      setPlaceTypes(existing.types)
     } else if (isOpen) {
       setName('')
       setCategory('food')
@@ -75,8 +83,12 @@ export function PlaceModal() {
       setListIds([])
       setGooglePlaceId(undefined)
       setPhotoName(undefined)
+      setPhotoNames(undefined)
       setRating(undefined)
       setWebsiteUri(undefined)
+      setPhoneNumber(undefined)
+      setOpeningHours(undefined)
+      setPlaceTypes(undefined)
     }
     setShowDelete(false)
   }, [isOpen, existing])
@@ -88,8 +100,12 @@ export function PlaceModal() {
     setLng(details.lng ? String(details.lng) : '')
     setGooglePlaceId(details.placeId)
     setPhotoName(details.photoName)
+    setPhotoNames(details.photoNames)
     setRating(details.rating)
     setWebsiteUri(details.websiteUri)
+    setPhoneNumber(details.phoneNumber)
+    setOpeningHours(details.openingHours)
+    setPlaceTypes(details.types)
     if (details.websiteUri && !link) setLink(details.websiteUri)
   }
 
@@ -112,8 +128,12 @@ export function PlaceModal() {
       lng: parsedLng,
       googlePlaceId,
       photoName,
+      photoNames,
       rating,
       websiteUri,
+      phoneNumber,
+      openingHours,
+      types: placeTypes,
     }
 
     if (isEdit && existing) {

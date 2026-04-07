@@ -1,9 +1,10 @@
-import { Plus, Copy, ExternalLink } from 'lucide-react'
+import { Plus, Copy, ExternalLink, Star } from 'lucide-react'
 import { SectionHeader } from '../layout/SectionHeader'
 import { Button } from '../shared/Button'
 import { useTripStore } from '../../stores/tripStore'
 import { useUIStore } from '../../stores/uiStore'
 import { formatDate, getNights } from '../../utils/dates'
+import { getPhotoUrl } from '../../services/googlePlaces'
 
 export function AccommodationsPage() {
   const accommodations = useTripStore((s) => s.accommodations)
@@ -43,9 +44,26 @@ export function AccommodationsPage() {
             <div
               key={acc.id}
               onClick={() => openModal('accommodation', acc.id)}
-              className="bg-card-bg rounded-[12px] shadow-card hover:shadow-card-hover p-5 transition-all cursor-pointer hover:scale-[1.005]"
+              className="bg-card-bg rounded-[12px] shadow-card hover:shadow-card-hover overflow-hidden transition-all cursor-pointer hover:scale-[1.005] flex"
             >
-              <h3 className="text-base font-semibold font-heading text-text-heading mb-3">{acc.name}</h3>
+              {acc.photoName && (
+                <div className="w-[140px] flex-shrink-0">
+                  <img
+                    src={getPhotoUrl(acc.photoName, 280)}
+                    alt={acc.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex-1 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-base font-semibold font-heading text-text-heading">{acc.name}</h3>
+                {acc.rating && (
+                  <span className="flex items-center gap-0.5 text-xs font-medium text-primary">
+                    <Star size={12} className="fill-primary" />
+                    {acc.rating}
+                  </span>
+                )}</div>
 
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <div>
@@ -98,6 +116,7 @@ export function AccommodationsPage() {
                   {new URL(acc.link).hostname}
                 </a>
               )}
+              </div>
             </div>
           ))}
         </div>

@@ -209,10 +209,113 @@ function SortablePlaceRow({
   )
 }
 
+// ─── Left Panel — Day Add Input ───────────────────────────────────────────────
+
+function DayAddInput({
+  dayIndex, savedPlaceIds, onPlaceAdded, getBounds,
+}: {
+  dayIndex: number
+  savedPlaceIds: Set<string>
+  onPlaceAdded: (details: PlaceDetails, dayIndex: number) => void
+  getBounds: () => ViewportBounds | null
+}) {
+  const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const debouncedQuery = useDebounce(query, 300)
+
+  useEffect(() => {
+    if (debouncedQuery.trim().length < 2) { setSuggestions([]); setOpen(false); return }
+    let cancelled = false
+    setIsSearching(true)
+    searchPlaces(debouncedQuery, getBounds() ?? undefined).then((res) => {
+      if (cancelled) return
+      setSuggestions(res)
+      setOpen(res.length > 0)
+      setIsSearching(false)
+      setActiveIdx(-1)
+    })
+    return () => { cancelled = true }
+  }, [debouncedQuery])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleSelect = async (s: PlaceSuggestion) => {
+    setOpen(false)
+    setQuery('')
+    setSuggestions([])
+    const details = await getPlaceDetails(s.placeId)
+    if (details) onPlaceAdded(details, dayIndex)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)) }
+    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); handleSelect(suggestions[activeIdx]) }
+  }
+
+  return (
+    <div ref={containerRef} className="relative mt-1.5">
+      <div className="relative">
+        {isSearching
+          ? <Loader2 size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-primary animate-spin" />
+          : <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-placeholder" />
+        }
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          placeholder="Add a place..."
+          className="w-full pl-6 pr-2 py-1.5 text-[11px] bg-white rounded-[8px] text-text-body placeholder:text-text-placeholder focus:outline-none focus:ring-1 focus:ring-primary/30 shadow-sm"
+        />
+      </div>
+      {open && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-[10px] shadow-modal overflow-hidden z-[100]">
+          {suggestions.map((s, i) => (
+            <button
+              key={s.placeId}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(s) }}
+              onMouseEnter={() => setActiveIdx(i)}
+              className={`w-full flex items-center gap-2 px-2.5 py-2 text-left transition-colors cursor-pointer ${
+                i === activeIdx ? 'bg-surface-high' : 'hover:bg-surface-high'
+              } ${i > 0 ? 'border-t border-[#f0ebe4]' : ''}`}
+            >
+              <MapPin size={10} className="text-primary flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium text-text-heading truncate">{s.mainText}</div>
+                {s.secondaryText && (
+                  <div className="text-[10px] text-text-muted truncate">{s.secondaryText}</div>
+                )}
+              </div>
+              {savedPlaceIds.has(s.placeId) && (
+                <span className="flex-shrink-0 text-[9px] font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+                  Saved
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Left Panel — Itinerary Days ───────────────────────────────────────────────
 
 function ItineraryPanel({
-  trip, places, activeDay, onDayChange, selectedPlaceId, onPlaceSelect, onRemoveFromDay, onReorderDay,
+  trip, places, activeDay, onDayChange, selectedPlaceId, onPlaceSelect, onRemoveFromDay, onReorderDay, onPlaceAdded, savedPlaceIds, getBounds,
 }: {
   trip: ReturnType<typeof useTripStore>['trip']
   places: Place[]
@@ -222,6 +325,9 @@ function ItineraryPanel({
   onPlaceSelect: (place: Place) => void
   onRemoveFromDay: (placeId: string) => void
   onReorderDay: (dayIndex: number, orderedIds: string[]) => void
+  onPlaceAdded: (details: PlaceDetails, dayIndex: number) => void
+  savedPlaceIds: Set<string>
+  getBounds: () => ViewportBounds | null
 }) {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set())
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -241,7 +347,6 @@ function ItineraryPanel({
     return { dayIndex: i, date, dayPlaces, city: getCityLabel(dayPlaces) }
   })
 
-  const totalWithCoords = places.filter((p) => p.lat != null && p.lng != null).length
 
   const handleDayClick = (dayIndex: number) => {
     const isActive = activeDay === dayIndex
@@ -260,30 +365,6 @@ function ItineraryPanel({
         <p className="text-[10px] uppercase tracking-widest font-semibold text-text-muted">My Itinerary</p>
       </div>
 
-      {/* All Places row */}
-      <button
-        onClick={() => { onDayChange(null); setExpandedDays(new Set()) }}
-        className={`mx-3 mb-1 flex items-center justify-between px-3 py-2.5 rounded-[10px] transition-all cursor-pointer ${
-          activeDay === null
-            ? 'bg-primary text-white'
-            : 'hover:bg-[#ede8e0] text-text-body'
-        }`}
-      >
-        <div className="flex items-center gap-2.5">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-            activeDay === null ? 'bg-white/20' : 'bg-[#e8e0d5]'
-          }`}>
-            <MapPin size={11} className={activeDay === null ? 'text-white' : 'text-text-muted'} />
-          </div>
-          <span className="text-xs font-semibold">All Places</span>
-        </div>
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-          activeDay === null ? 'bg-white/20 text-white' : 'bg-[#e8e0d5] text-text-muted'
-        }`}>
-          {totalWithCoords}
-        </span>
-      </button>
-
       {/* Day list */}
       <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-0.5">
         {days.map(({ dayIndex, date, dayPlaces, city }) => {
@@ -297,9 +378,7 @@ function ItineraryPanel({
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-[10px] transition-all text-left cursor-pointer ${
                   isActive
                     ? 'bg-amber-50 border border-amber-200'
-                    : hasPlaces
-                      ? 'hover:bg-[#ede8e0]'
-                      : 'opacity-50 hover:bg-[#ede8e0]'
+                    : 'hover:bg-[#ede8e0]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -325,46 +404,53 @@ function ItineraryPanel({
                       {dayPlaces.length}
                     </span>
                   )}
-                  {hasPlaces && (
-                    isExpanded
-                      ? <ChevronUp size={12} className="text-text-muted" />
-                      : <ChevronDown size={12} className="text-text-muted" />
-                  )}
+                  {isExpanded
+                    ? <ChevronUp size={12} className="text-text-muted" />
+                    : <ChevronDown size={12} className="text-text-muted" />
+                  }
                 </div>
               </button>
 
-              {/* Expanded place list */}
-              {isExpanded && hasPlaces && (
+              {/* Expanded content */}
+              {isExpanded && (
                 <div className="ml-5 pl-3 border-l-2 border-[#e8e0d5] mt-1 mb-1.5 space-y-0.5">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event: DragEndEvent) => {
-                      const { active, over } = event
-                      if (!over || active.id === over.id) return
-                      const ids = dayPlaces.map((p) => p.id)
-                      const oldIdx = ids.indexOf(active.id as string)
-                      const newIdx = ids.indexOf(over.id as string)
-                      if (oldIdx === -1 || newIdx === -1) return
-                      const reordered = [...ids]
-                      reordered.splice(oldIdx, 1)
-                      reordered.splice(newIdx, 0, active.id as string)
-                      onReorderDay(dayIndex, reordered)
-                    }}
-                  >
-                    <SortableContext items={dayPlaces.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                      {dayPlaces.map((place, idx) => (
-                        <SortablePlaceRow
-                          key={place.id}
-                          place={place}
-                          index={idx + 1}
-                          isSelected={selectedPlaceId === place.id}
-                          onClick={onPlaceSelect}
-                          onRemove={onRemoveFromDay}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
+                  {hasPlaces && (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event: DragEndEvent) => {
+                        const { active, over } = event
+                        if (!over || active.id === over.id) return
+                        const ids = dayPlaces.map((p) => p.id)
+                        const oldIdx = ids.indexOf(active.id as string)
+                        const newIdx = ids.indexOf(over.id as string)
+                        if (oldIdx === -1 || newIdx === -1) return
+                        const reordered = [...ids]
+                        reordered.splice(oldIdx, 1)
+                        reordered.splice(newIdx, 0, active.id as string)
+                        onReorderDay(dayIndex, reordered)
+                      }}
+                    >
+                      <SortableContext items={dayPlaces.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                        {dayPlaces.map((place, idx) => (
+                          <SortablePlaceRow
+                            key={place.id}
+                            place={place}
+                            index={idx + 1}
+                            isSelected={selectedPlaceId === place.id}
+                            onClick={onPlaceSelect}
+                            onRemove={onRemoveFromDay}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                  <DayAddInput
+                    dayIndex={dayIndex}
+                    savedPlaceIds={savedPlaceIds}
+                    onPlaceAdded={onPlaceAdded}
+                    getBounds={getBounds}
+                  />
                 </div>
               )}
             </div>
@@ -382,11 +468,13 @@ function FloatingSearch({
   onSuggestionSelect,
   getBounds,
   isSearching,
+  savedPlaceIds,
 }: {
   onSearchSubmit: (query: string) => void
   onSuggestionSelect: (s: PlaceSuggestion) => void
   getBounds: () => ViewportBounds | null
   isSearching: boolean
+  savedPlaceIds: Set<string>
 }) {
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
@@ -481,12 +569,17 @@ function FloatingSearch({
                 } ${i > 0 ? 'border-t border-[#f0ebe4]' : ''}`}
               >
                 <MapPin size={13} className="text-primary flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium text-text-heading truncate">{s.mainText}</div>
                   {s.secondaryText && (
                     <div className="text-xs text-text-muted truncate">{s.secondaryText}</div>
                   )}
                 </div>
+                {savedPlaceIds.has(s.placeId) && (
+                  <span className="flex-shrink-0 text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full mt-0.5">
+                    Saved
+                  </span>
+                )}
               </button>
             ))}
             <div className="px-4 py-1.5 border-t border-[#f0ebe4] flex justify-end">
@@ -505,6 +598,7 @@ function BottomCarousel({
   results,
   query,
   savedPlaceIds,
+  activeSearchPlaceId,
   onSelect,
   onExpand,
   onQuickAdd,
@@ -513,6 +607,7 @@ function BottomCarousel({
   results: PlaceDetails[]
   query: string
   savedPlaceIds: Set<string>
+  activeSearchPlaceId: string | null
   onSelect: (d: PlaceDetails) => void
   onExpand: (d: PlaceDetails) => void
   onQuickAdd: (d: PlaceDetails) => void
@@ -525,6 +620,15 @@ function BottomCarousel({
   useEffect(() => {
     setActiveIdx(0)
   }, [results])
+
+  // Sync carousel index when a marker is clicked externally
+  useEffect(() => {
+    if (!activeSearchPlaceId || results.length === 0) return
+    const idx = results.findIndex((r) => r.placeId === activeSearchPlaceId)
+    if (idx !== -1 && idx !== activeIdx) {
+      setActiveIdx(idx)
+    }
+  }, [activeSearchPlaceId, results])
 
   // Pan map whenever active card changes
   useEffect(() => {
@@ -559,7 +663,7 @@ function BottomCarousel({
   const isSaved = savedPlaceIds.has(current.placeId)
 
   return (
-    <div ref={containerRef} className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[5] w-full max-w-[420px] px-4">
+    <div ref={containerRef} className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[5] w-full max-w-[500px] px-4">
       {/* Counter pill — floating above card */}
       <div className="flex items-center justify-center mb-2.5">
         <div className="bg-white rounded-full px-4 py-1.5 shadow-card flex items-center gap-2">
@@ -594,19 +698,19 @@ function BottomCarousel({
         <div className="flex-1 min-w-0 bg-white rounded-[16px] shadow-card-hover overflow-hidden">
           <div className="flex">
             {/* Photo */}
-            <div className="w-[110px] h-[100px] flex-shrink-0">
+            <div className="w-[140px] flex-shrink-0">
               <PlacePhoto
                 photoName={current.photoName}
                 category={inferredCat}
                 className="w-full h-full"
-                width={220}
+                width={280}
               />
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0 px-4 py-3">
+            <div className="flex-1 min-w-0 px-4 py-3 flex flex-col justify-center">
               <p className="text-sm font-semibold font-heading text-text-heading leading-snug line-clamp-2 mb-1.5">{current.name}</p>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1.5">
                 <CategoryBadge category={inferredCat} size="sm" />
                 {current.rating && (
                   <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-500">
@@ -616,8 +720,22 @@ function BottomCarousel({
                 )}
               </div>
               {current.address && (
-                <p className="text-[10px] text-text-placeholder truncate">{current.address}</p>
+                <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed mb-1">{current.address}</p>
               )}
+              <div className="flex items-center gap-3 flex-wrap">
+                {current.phoneNumber && (
+                  <span className="flex items-center gap-1 text-[10px] text-text-muted">
+                    <Phone size={10} className="flex-shrink-0" />
+                    <span className="truncate max-w-[120px]">{current.phoneNumber}</span>
+                  </span>
+                )}
+                {current.websiteUri && (
+                  <span className="flex items-center gap-1 text-[10px] text-primary">
+                    <Globe size={10} className="flex-shrink-0" />
+                    <span className="truncate max-w-[120px]">{current.websiteUri.replace(/^https?:\/\//, '').replace(/\/.*/, '')}</span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Right action buttons */}
@@ -757,8 +875,12 @@ function PlaceDetailModal({
       timeSlot: '',
       googlePlaceId: details.placeId,
       photoName: details.photoName,
+      photoNames: details.photoNames,
       rating: details.rating,
       websiteUri: details.websiteUri,
+      phoneNumber: details.phoneNumber,
+      openingHours: details.openingHours,
+      types: details.types,
     })
     setSaving(false)
     setSaved(true)
@@ -1086,19 +1208,29 @@ export function MapPage() {
       ? `<span style="display:inline-flex;align-items:center;gap:2px;margin-left:6px"><span style="color:#f59e0b;font-size:11px">★</span><span style="font-size:11px;color:#78716c">${details.rating.toFixed(1)}</span></span>`
       : ''
 
+    const photoSrc = details.photoNames?.[0] || details.photoName
+    const photoHtml = photoSrc
+      ? `<img src="${getPhotoUrl(photoSrc, 400)}" alt="${details.name}" style="width:100%;height:90px;object-fit:cover;border-radius:8px 8px 0 0;display:block" />`
+      : `<div style="width:100%;height:40px;background:${catColor};border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center">
+          <span style="color:white;font-size:11px;font-weight:600;text-transform:capitalize">${CATEGORY_CONFIG[category].label}</span>
+        </div>`
+
     const cardId = `iw-expand-${details.placeId.replace(/[^a-zA-Z0-9]/g, '')}`
     iw.setContent(
-      `<div style="padding:6px 4px;min-width:160px;max-width:240px">
-        <div style="font-size:13px;font-weight:700;color:#1c1917;line-height:1.3;margin-bottom:4px">${details.name}</div>
-        <div style="display:flex;align-items:center;gap:5px">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${catColor};flex-shrink:0"></span>
-          <span style="font-size:11px;color:#78716c;text-transform:capitalize">${CATEGORY_CONFIG[category].label}</span>
-          ${ratingHtml}
+      `<div style="min-width:200px;max-width:260px;overflow:hidden;border-radius:8px;margin:-8px -8px -12px">
+        ${photoHtml}
+        <div style="padding:8px 10px 10px">
+          <div style="font-size:13px;font-weight:700;color:#1c1917;line-height:1.3;margin-bottom:4px">${details.name}</div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${catColor};flex-shrink:0"></span>
+            <span style="font-size:11px;color:#78716c;text-transform:capitalize">${CATEGORY_CONFIG[category].label}</span>
+            ${ratingHtml}
+          </div>
+          <button id="${cardId}" style="margin-top:8px;padding:5px 12px;background:#f59e0b;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;width:100%;justify-content:center">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></svg>
+            View details
+          </button>
         </div>
-        <button id="${cardId}" style="margin-top:6px;padding:4px 10px;background:#f59e0b;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></svg>
-          View details
-        </button>
       </div>`
     )
     iw.open(mapRef.current, marker)
@@ -1303,11 +1435,12 @@ export function MapPage() {
       })
       marker.addListener('mouseout', () => hoverIw.close())
 
-      // Click → show anchored card with expand to modal
+      // Click → show anchored card with expand to modal + sync carousel
       marker.addListener('click', () => {
         hoverIw.close()
         const cat = inferCategory(r.types)
         showMarkerCard(marker, r, cat)
+        setActiveSearchPlaceId(r.placeId)
         mapRef.current?.panTo({ lat: r.lat, lng: r.lng })
       })
       searchMkrsRef.current.push(marker)
@@ -1436,8 +1569,12 @@ export function MapPage() {
       timeSlot: '',
       googlePlaceId: details.placeId,
       photoName: details.photoName,
+      photoNames: details.photoNames,
       rating: details.rating,
       websiteUri: details.websiteUri,
+      phoneNumber: details.phoneNumber,
+      openingHours: details.openingHours,
+      types: details.types,
     })
     useUIStore.getState().showToast(`Added "${details.name}"`)
   }
@@ -1472,6 +1609,48 @@ export function MapPage() {
       }
     }
   }, [places])
+
+  // Place added from a day's add input
+  const handlePlaceAddedFromDay = useCallback(async (details: PlaceDetails, dayIndex: number) => {
+    const trip_ = trip
+    if (!trip_) return
+    const existingDayPlaces = places.filter((p) => p.dayIndex === dayIndex)
+    const { addPlace } = useTripStore.getState()
+    await addPlace({
+      tripId: trip_.id,
+      name: details.name,
+      category: inferCategory(details.types),
+      priority: 'want-to',
+      notes: '',
+      address: details.address,
+      area: '',
+      lat: details.lat,
+      lng: details.lng,
+      links: details.websiteUri ? [details.websiteUri] : [],
+      listIds: [],
+      dayIndex,
+      orderInDay: existingDayPlaces.length,
+      timeSlot: '',
+      googlePlaceId: details.placeId,
+      photoName: details.photoName,
+      photoNames: details.photoNames,
+      rating: details.rating,
+      websiteUri: details.websiteUri,
+      phoneNumber: details.phoneNumber,
+      openingHours: details.openingHours,
+      types: details.types,
+    })
+    useUIStore.getState().showToast(`Added "${details.name}" to Day ${dayIndex + 1}`)
+
+    // Show in carousel + pan map
+    setSearchResults([details])
+    setSearchQuery(details.name)
+    setActiveSearchPlaceId(details.placeId)
+    if (mapRef.current && details.lat && details.lng) {
+      mapRef.current.panTo({ lat: details.lat, lng: details.lng })
+      mapRef.current.setZoom(Math.max(mapRef.current.getZoom() ?? 15, 15))
+    }
+  }, [trip, places])
 
   // Place selected from the left itinerary panel
   const handlePlaceSelect = useCallback((place: Place) => {
@@ -1517,6 +1696,9 @@ export function MapPage() {
         onPlaceSelect={handlePlaceSelect}
         onRemoveFromDay={handleRemoveFromDay}
         onReorderDay={handleReorderDay}
+        onPlaceAdded={handlePlaceAddedFromDay}
+        savedPlaceIds={savedPlaceIds}
+        getBounds={getBounds}
       />
 
       {/* ── Map (full width) ── */}
@@ -1538,6 +1720,7 @@ export function MapPage() {
             onSuggestionSelect={handleSuggestionSelect}
             getBounds={getBounds}
             isSearching={isSearching}
+            savedPlaceIds={savedPlaceIds}
           />
         )}
 
@@ -1547,6 +1730,7 @@ export function MapPage() {
             results={searchResults}
             query={searchQuery}
             savedPlaceIds={savedPlaceIds}
+            activeSearchPlaceId={activeSearchPlaceId}
             onSelect={handleCarouselSelect}
             onExpand={setDetailModalPlace}
             onQuickAdd={handleQuickAdd}

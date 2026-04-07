@@ -8,6 +8,7 @@ import type {
   PackingItem,
   Note,
   DayNote,
+  InlineNote,
   HistoryEntry,
 } from '../types'
 
@@ -20,6 +21,7 @@ class TravelPlannerDB extends Dexie {
   packingItems!: Table<PackingItem>
   notes!: Table<Note>
   dayNotes!: Table<DayNote>
+  inlineNotes!: Table<InlineNote>
   historyEntries!: Table<HistoryEntry>
 
   constructor() {
@@ -34,6 +36,19 @@ class TravelPlannerDB extends Dexie {
       packingItems: 'id, tripId, [tripId+category]',
       notes: 'id, tripId',
       dayNotes: 'id, tripId, [tripId+dayIndex]',
+      historyEntries: 'id, timestamp',
+    })
+
+    this.version(2).stores({
+      trips: 'id',
+      places: 'id, tripId, [tripId+dayIndex], [tripId+category], *listIds',
+      accommodations: 'id, tripId',
+      reservations: 'id, tripId, [tripId+category]',
+      customLists: 'id, tripId',
+      packingItems: 'id, tripId, [tripId+category]',
+      notes: 'id, tripId',
+      dayNotes: 'id, tripId, [tripId+dayIndex]',
+      inlineNotes: 'id, tripId, [tripId+dayIndex]',
       historyEntries: 'id, timestamp',
     })
   }
