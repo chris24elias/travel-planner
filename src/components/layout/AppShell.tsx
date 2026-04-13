@@ -4,7 +4,7 @@ import { Toast } from '../shared/Toast'
 import { useUIStore } from '../../stores/uiStore'
 
 // Sections that need full-bleed layout (no max-width / padding wrapper)
-const FULL_BLEED_SECTIONS = new Set(['map', 'places', 'kanban'])
+const FULL_BLEED_SECTIONS = new Set(['map', 'places', 'kanban', 'itinerary2'])
 
 interface AppShellProps {
   children: ReactNode

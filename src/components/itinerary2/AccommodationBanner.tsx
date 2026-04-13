@@ -25,13 +25,12 @@ export function AccommodationBanner({ accommodation, status }: AccommodationBann
   return (
     <button
       onClick={() => openModal('accommodation', accommodation.id)}
-      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] bg-surface-high/60 hover:bg-surface-high transition-colors cursor-pointer mt-2 first:mt-0"
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors cursor-pointer mt-2 first:mt-0 ${STATUS_STYLES[status]}`}
     >
-      <Building2 size={14} className="text-text-muted flex-shrink-0" />
-      <span className="text-sm text-text-body truncate flex-1 text-left">{accommodation.name}</span>
-      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[status]}`}>
-        {STATUS_LABELS[status]}
-      </span>
+      <Building2 size={11} className="flex-shrink-0" />
+      <span className="font-medium truncate max-w-[180px]">{accommodation.name}</span>
+      <span className="opacity-60">·</span>
+      <span className="font-semibold whitespace-nowrap">{STATUS_LABELS[status]}</span>
     </button>
   )
 }

@@ -84,7 +84,7 @@ export function DaySection({
   const noteCount = items.filter((i) => i.type === 'note').length
 
   return (
-    <div className="bg-card-bg rounded-[12px] shadow-card overflow-hidden">
+    <div className="bg-card-bg rounded-[12px] shadow-card">
       <DayHeader
         dayIndex={dayIndex}
         date={date}
@@ -99,9 +99,9 @@ export function DaySection({
         className="grid transition-[grid-template-rows] duration-200 ease-in-out"
         style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
       >
-        <div className="overflow-hidden">
+        <div className={isExpanded ? '' : 'overflow-hidden'}>
           {isExpanded && (
-            <div className="px-5 pb-4">
+            <div className="px-5 pt-3 pb-4">
               {accommodationBanners.map((banner) => (
                 <AccommodationBanner
                   key={banner.accommodation.id}

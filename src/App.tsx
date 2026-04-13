@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useTripStore } from './stores/tripStore'
 import { useUIStore } from './stores/uiStore'
+import { PasswordGate } from './components/auth/PasswordGate'
 import { AppShell } from './components/layout/AppShell'
 import { TripsHome } from './components/home/TripsHome'
 import { OverviewPage } from './components/overview/OverviewPage'
@@ -59,18 +60,20 @@ function App() {
 
   // No active trip selected → show home
   if (!activeTripId || !trip) {
-    return <TripsHome />
+    return <PasswordGate><TripsHome /></PasswordGate>
   }
 
   return (
-    <AppShell>
-      <SectionRouter />
-      <PlaceModal />
-      <AccommodationModal />
-      <ReservationModal />
-      <NoteModal />
-      <ListModal />
-    </AppShell>
+    <PasswordGate>
+      <AppShell>
+        <SectionRouter />
+        <PlaceModal />
+        <AccommodationModal />
+        <ReservationModal />
+        <NoteModal />
+        <ListModal />
+      </AppShell>
+    </PasswordGate>
   )
 }
 
