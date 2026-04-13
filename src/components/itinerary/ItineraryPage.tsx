@@ -1,16 +1,11 @@
 import { useState } from 'react'
 import { useTripStore } from '../../stores/tripStore'
-import { useUIStore } from '../../stores/uiStore'
-import { getDayDates, formatDayOfWeek, formatDateShort } from '../../utils/dates'
-import { CATEGORY_CONFIG } from '../../utils/categories'
-import type { Place } from '../../types'
+import { getDayDates } from '../../utils/dates'
 import { TripOverviewGrid } from './TripOverviewGrid'
 import { DayPlannerView } from './DayPlannerView'
 
 export function ItineraryPage() {
   const trip = useTripStore((s) => s.trip)
-  const places = useTripStore((s) => s.places)
-  const dayNotes = useTripStore((s) => s.dayNotes)
 
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
 
