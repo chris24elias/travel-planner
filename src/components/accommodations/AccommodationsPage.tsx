@@ -44,10 +44,10 @@ export function AccommodationsPage() {
             <div
               key={acc.id}
               onClick={() => openModal('accommodation', acc.id)}
-              className="bg-card-bg rounded-[12px] shadow-card hover:shadow-card-hover overflow-hidden transition-all cursor-pointer hover:scale-[1.005] flex"
+              className="bg-card-bg rounded-[12px] shadow-card hover:shadow-card-hover overflow-hidden transition-all cursor-pointer hover:scale-[1.005] flex flex-col md:flex-row"
             >
               {acc.photoName && (
-                <div className="w-[140px] flex-shrink-0">
+                <div className="w-full h-[160px] md:w-[140px] md:h-auto flex-shrink-0">
                   <img
                     src={getPhotoUrl(acc.photoName, 280)}
                     alt={acc.name}
@@ -55,7 +55,7 @@ export function AccommodationsPage() {
                   />
                 </div>
               )}
-              <div className="flex-1 p-5">
+              <div className="flex-1 p-4 md:p-5">
               <div className="flex items-center gap-2 mb-3">
                 <h3 className="text-base font-semibold font-heading text-text-heading">{acc.name}</h3>
                 {acc.rating && (

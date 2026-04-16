@@ -276,9 +276,9 @@ export function KanbanPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-49px)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 pt-5 pb-4">
+      <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-5 pb-3 md:pb-4">
         <h1 className="text-xl font-bold font-heading text-text-heading">Itinerary</h1>
         <p className="text-xs text-text-muted mt-0.5">
           Kanban · {format(startDate, 'MMM d')} — {format(addDays(startDate, duration - 1), 'MMM d, yyyy')} · {duration} days

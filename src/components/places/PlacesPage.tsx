@@ -784,29 +784,32 @@ export function PlacesPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <ListSidebar
-        lists={customLists}
-        places={places}
-        activeListId={activeListId}
-        onSelectList={setActiveListId}
-      />
+    <div className="flex h-[calc(100vh-49px)] md:h-screen overflow-hidden">
+      {/* ListSidebar hidden on mobile */}
+      <div className="hidden md:flex">
+        <ListSidebar
+          lists={customLists}
+          places={places}
+          activeListId={activeListId}
+          onSelectList={setActiveListId}
+        />
+      </div>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
-          <div>
-            <h1 className="text-xl font-bold font-heading text-text-heading leading-tight">
+        <div className="flex items-center justify-between px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 flex-shrink-0 gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-xl font-bold font-heading text-text-heading leading-tight truncate">
               {activeList ? activeList.name : 'All Places'}
             </h1>
             <p className="text-xs text-text-muted mt-0.5">{sorted.length} place{sorted.length !== 1 ? 's' : ''}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="text-xs bg-[#f1ede7] text-text-body border-none rounded-[8px] px-3 py-1.5 outline-none cursor-pointer"
+              className="text-xs bg-[#f1ede7] text-text-body border-none rounded-[8px] px-3 py-1.5 outline-none cursor-pointer hidden md:block"
             >
               <option value="manual">Sort: Added</option>
               <option value="name">Sort: Name</option>
@@ -834,13 +837,13 @@ export function PlacesPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-[8px] hover:bg-amber-700 transition-colors cursor-pointer"
             >
               <Plus size={13} />
-              Add Place
+              <span className="hidden md:inline">Add Place</span>
             </button>
           </div>
         </div>
 
         {/* Place grid/list */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6">
           {sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-16">
               <div className="text-4xl mb-4">📍</div>
@@ -859,7 +862,7 @@ export function PlacesPage() {
               </button>
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {sorted.map((place) => (
                 <PlaceCardGrid
                   key={place.id}

@@ -45,7 +45,7 @@ export function ReservationsPage() {
       />
 
       {/* Filter Bar */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {filters.map((f) => (
           <button
             key={f.value}

@@ -457,9 +457,9 @@ export function DayPlannerView({ trip, dayDates, selectedDay, onSelectDay, onBac
             <ArrowLeft size={18} />
           </button>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold font-heading tracking-tight">Day {selectedDay + 1}</h1>
-              <span className="text-sm text-text-muted">
+            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+              <h1 className="text-xl md:text-2xl font-bold font-heading tracking-tight">Day {selectedDay + 1}</h1>
+              <span className="text-xs md:text-sm text-text-muted">
                 — {formatDayOfWeek(date)}, {formatDateShort(date)}
               </span>
             </div>
@@ -476,7 +476,7 @@ export function DayPlannerView({ trip, dayDates, selectedDay, onSelectDay, onBac
         />
 
         {/* Two Column Layout */}
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           {/* Left: Day Schedule */}
           <div className="flex-1 min-w-0">
             {/* Day Note */}
@@ -543,7 +543,7 @@ export function DayPlannerView({ trip, dayDates, selectedDay, onSelectDay, onBac
           </div>
 
           {/* Right: Add to Day Panel */}
-          <div className="w-72 flex-shrink-0">
+          <div className="w-full md:w-72 flex-shrink-0">
             <AddToDayPanel dayIndex={selectedDay} />
           </div>
         </div>

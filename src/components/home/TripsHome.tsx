@@ -162,11 +162,11 @@ export function TripsHome() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#fdf9f3' }}>
       {/* Nav */}
-      <header className="h-16 bg-white border-b border-[#f0ebe4] px-16 flex items-center justify-between">
+      <header className="h-14 md:h-16 bg-white border-b border-[#f0ebe4] px-4 md:px-16 flex items-center justify-between">
         <span className="font-heading font-bold text-xl text-[#855300] italic tracking-tight">tabi</span>
         <button
           onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#f59e0b] hover:bg-[#d97706] text-white text-sm font-semibold rounded-[10px] transition-all cursor-pointer"
+          className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#f59e0b] hover:bg-[#d97706] text-white text-sm font-semibold rounded-[10px] transition-all cursor-pointer"
         >
           <Plus size={14} />
           New Trip
@@ -174,14 +174,14 @@ export function TripsHome() {
       </header>
 
       {/* Content */}
-      <div className="max-w-[1100px] mx-auto px-16 py-12">
-        <h1 className="font-heading font-bold text-[32px] text-[#1c1c18] mb-1">Your Trips</h1>
-        <p className="text-sm text-[#534434] mb-8">
+      <div className="max-w-[1100px] mx-auto px-4 md:px-16 py-6 md:py-12">
+        <h1 className="font-heading font-bold text-2xl md:text-[32px] text-[#1c1c18] mb-1">Your Trips</h1>
+        <p className="text-sm text-[#534434] mb-6 md:mb-8">
           {allTrips.length} trip{allTrips.length !== 1 ? 's' : ''} · {upcomingCount} upcoming
         </p>
 
         {/* Grid */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {allTrips.map((trip) => (
             <TripCard
               key={trip.id}

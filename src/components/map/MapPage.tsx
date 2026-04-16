@@ -698,7 +698,7 @@ function BottomCarousel({
         <div className="flex-1 min-w-0 bg-white rounded-[16px] shadow-card-hover overflow-hidden">
           <div className="flex">
             {/* Photo */}
-            <div className="w-[140px] flex-shrink-0">
+            <div className="w-[100px] md:w-[140px] flex-shrink-0">
               <PlacePhoto
                 photoName={current.photoName}
                 category={inferredCat}
@@ -708,7 +708,7 @@ function BottomCarousel({
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0 px-4 py-3 flex flex-col justify-center">
+            <div className="flex-1 min-w-0 px-3 md:px-4 py-3 flex flex-col justify-center">
               <p className="text-sm font-semibold font-heading text-text-heading leading-snug line-clamp-2 mb-1.5">{current.name}</p>
               <div className="flex items-center gap-2 mb-1.5">
                 <CategoryBadge category={inferredCat} size="sm" />
@@ -1685,21 +1685,23 @@ export function MapPage() {
   }, [showMarkerCard])
 
   return (
-    <div className="flex overflow-hidden h-screen">
-      {/* ── Left: Itinerary Panel ── */}
-      <ItineraryPanel
-        trip={trip}
-        places={places}
-        activeDay={activeDay}
-        onDayChange={setActiveDay}
-        selectedPlaceId={selectedPlaceId}
-        onPlaceSelect={handlePlaceSelect}
-        onRemoveFromDay={handleRemoveFromDay}
-        onReorderDay={handleReorderDay}
-        onPlaceAdded={handlePlaceAddedFromDay}
-        savedPlaceIds={savedPlaceIds}
-        getBounds={getBounds}
-      />
+    <div className="flex overflow-hidden h-[calc(100vh-49px)] md:h-screen">
+      {/* ── Left: Itinerary Panel (hidden on mobile) ── */}
+      <div className="hidden md:flex">
+        <ItineraryPanel
+          trip={trip}
+          places={places}
+          activeDay={activeDay}
+          onDayChange={setActiveDay}
+          selectedPlaceId={selectedPlaceId}
+          onPlaceSelect={handlePlaceSelect}
+          onRemoveFromDay={handleRemoveFromDay}
+          onReorderDay={handleReorderDay}
+          onPlaceAdded={handlePlaceAddedFromDay}
+          savedPlaceIds={savedPlaceIds}
+          getBounds={getBounds}
+        />
+      </div>
 
       {/* ── Map (full width) ── */}
       <div className="flex-1 relative overflow-hidden">
