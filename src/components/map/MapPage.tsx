@@ -8,7 +8,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import {
   Search, Loader2, MapPin, Plus, Check, GripVertical,
-  Star, Globe, Phone, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Maximize2,
+  Star, Globe, Phone, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Maximize2, Navigation,
 } from 'lucide-react'
 import { format, addDays, parseISO } from 'date-fns'
 import { PlacePhoto } from '../shared/PlacePhoto'
@@ -1166,6 +1166,91 @@ export function MapPage() {
   const openDetailModalRef = useRef<(details: PlaceDetails) => void>(() => {})
   openDetailModalRef.current = (d: PlaceDetails) => setDetailModalPlace(d)
 
+  // My location
+  const [locating, setLocating] = useState(false)
+  const [locationActive, setLocationActive] = useState(false)
+  const locationMarkerRef = useRef<google.maps.Marker | null>(null)
+  const locationWatchRef  = useRef<number | null>(null)
+
+  const handleMyLocation = useCallback(() => {
+    if (!mapRef.current || !mapsReady) return
+    if (!navigator.geolocation) return
+
+    // Toggle off
+    if (locationActive) {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current)
+        locationWatchRef.current = null
+      }
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.setMap(null)
+        locationMarkerRef.current = null
+      }
+      setLocationActive(false)
+      return
+    }
+
+    setLocating(true)
+
+    const updatePosition = (pos: GeolocationPosition) => {
+      const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+
+      if (!locationMarkerRef.current) {
+        const blueDotSvg = `data:image/svg+xml,${encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+            <circle cx="12" cy="12" r="10" fill="#4285F4" fill-opacity="0.15" stroke="#4285F4" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="5" fill="#4285F4" stroke="white" stroke-width="2"/>
+          </svg>`
+        )}`
+        locationMarkerRef.current = new google.maps.Marker({
+          position: latLng,
+          map: mapRef.current!,
+          icon: { url: blueDotSvg, scaledSize: new google.maps.Size(24, 24), anchor: new google.maps.Point(12, 12) },
+          zIndex: 9999,
+          title: 'My Location',
+        })
+      } else {
+        locationMarkerRef.current.setPosition(latLng)
+      }
+
+      mapRef.current!.panTo(latLng)
+      mapRef.current!.setZoom(Math.max(mapRef.current!.getZoom() ?? 15, 15))
+      setLocating(false)
+      setLocationActive(true)
+    }
+
+    const handleError = () => {
+      setLocating(false)
+    }
+
+    // Get initial position then watch
+    navigator.geolocation.getCurrentPosition(updatePosition, handleError, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+    })
+
+    locationWatchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        if (locationMarkerRef.current) locationMarkerRef.current.setPosition(latLng)
+      },
+      () => {},
+      { enableHighAccuracy: true },
+    )
+  }, [mapsReady, locationActive])
+
+  // Cleanup watch on unmount
+  useEffect(() => {
+    return () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current)
+      }
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.setMap(null)
+      }
+    }
+  }, [])
+
   // Set of saved place google IDs for quick lookup
   const savedPlaceIds = useMemo(
     () => new Set(places.map((p) => p.googlePlaceId).filter(Boolean) as string[]),
@@ -1722,6 +1807,25 @@ export function MapPage() {
             isSearching={isSearching}
             savedPlaceIds={savedPlaceIds}
           />
+        )}
+
+        {/* My Location button */}
+        {mapsReady && (
+          <button
+            onClick={handleMyLocation}
+            className={`absolute right-3 bottom-28 z-10 p-2.5 rounded-full shadow-lg transition-all cursor-pointer ${
+              locationActive
+                ? 'bg-primary text-white'
+                : 'bg-white text-text-body hover:bg-surface-high'
+            }`}
+            title={locationActive ? 'Hide my location' : 'Show my location'}
+          >
+            {locating ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Navigation size={18} className={locationActive ? 'fill-current' : ''} />
+            )}
+          </button>
         )}
 
         {/* Bottom carousel */}
