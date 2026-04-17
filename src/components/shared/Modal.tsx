@@ -27,15 +27,15 @@ export function Modal({ isOpen, onClose, title, children, footer, width = 'max-w
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 md:p-4"
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       <div
-        className={`${width} w-full bg-card-bg rounded-[16px] shadow-modal animate-in`}
+        className={`${width} w-full bg-card-bg rounded-t-[16px] md:rounded-[16px] shadow-modal animate-in max-h-[90vh] md:max-h-none flex flex-col`}
         style={{ animation: 'modalIn 0.15s ease-out' }}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="text-lg font-semibold font-heading">{title}</h2>
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-border-light flex-shrink-0">
+          <h2 className="text-base md:text-lg font-semibold font-heading">{title}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-text-muted hover:text-text-body hover:bg-surface-high transition-colors"
@@ -43,11 +43,11 @@ export function Modal({ isOpen, onClose, title, children, footer, width = 'max-w
             <X size={18} />
           </button>
         </div>
-        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+        <div className="px-4 md:px-6 py-4 md:py-5 max-h-[70vh] overflow-y-auto flex-1">
           {children}
         </div>
         {footer && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-border-light">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-t border-border-light flex-shrink-0">
             {footer}
           </div>
         )}

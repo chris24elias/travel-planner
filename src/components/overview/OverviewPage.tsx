@@ -56,30 +56,30 @@ export function OverviewPage() {
   return (
     <div>
       {/* Trip Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-extrabold font-heading tracking-tight text-text-heading">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-4xl font-extrabold font-heading tracking-tight text-text-heading">
           {trip.name}
         </h1>
-        <p className="text-sm text-text-muted mt-1">
+        <p className="text-xs md:text-sm text-text-muted mt-1">
           {formatDate(trip.startDate)} — {formatDate(trip.endDate)} · {duration} days
         </p>
         {daysUntil > 0 && (
-          <span className="inline-flex items-center mt-3 px-3 py-1.5 bg-primary-light text-primary-hover text-sm font-bold rounded-full">
+          <span className="inline-flex items-center mt-3 px-3 py-1.5 bg-primary-light text-primary-hover text-xs md:text-sm font-bold rounded-full">
             ✈ {daysUntil} days to go!
           </span>
         )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8 md:mb-10">
         {stats.map((stat) => (
           <button
             key={stat.label}
             onClick={() => setSection(stat.section)}
-            className="bg-card-bg rounded-[12px] shadow-card hover:shadow-card-hover p-5 text-left transition-all cursor-pointer hover:scale-[1.02]"
+            className="bg-card-bg rounded-[12px] shadow-card hover:shadow-card-hover p-4 md:p-5 text-left transition-all cursor-pointer hover:scale-[1.02]"
           >
-            <div className="text-3xl font-extrabold font-heading text-text-heading">{stat.value}</div>
-            <div className="text-xs font-medium uppercase tracking-widest text-text-muted mt-1">{stat.label}</div>
+            <div className="text-2xl md:text-3xl font-extrabold font-heading text-text-heading">{stat.value}</div>
+            <div className="text-[10px] md:text-xs font-medium uppercase tracking-widest text-text-muted mt-1">{stat.label}</div>
           </button>
         ))}
       </div>
@@ -112,7 +112,7 @@ export function OverviewPage() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-4">Quick Actions</h2>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button variant="secondary" icon={<Plus size={16} />} onClick={() => openModal('place')}>
             Add Place
           </Button>

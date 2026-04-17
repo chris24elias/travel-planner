@@ -14,6 +14,7 @@ interface UIState {
   reservationFilter: 'all' | 'dining' | 'transport' | 'activity'
   sidebarPlacesExpanded: boolean
   toastMessage: string | null
+  sidebarOpen: boolean
 
   setSection: (section: AppSection) => void
   openModal: (type: ModalState['type'], itemId?: string | null, extra?: Record<string, unknown>) => void
@@ -23,6 +24,8 @@ interface UIState {
   toggleSidebarPlaces: () => void
   showToast: (message: string) => void
   clearToast: () => void
+  toggleSidebar: () => void
+  closeSidebar: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -32,6 +35,7 @@ export const useUIStore = create<UIState>((set) => ({
   reservationFilter: 'all',
   sidebarPlacesExpanded: true,
   toastMessage: null,
+  sidebarOpen: false,
 
   setSection: (section) => set({ activeSection: section }),
   openModal: (type, itemId = null, extra) => set({ modal: { type, itemId, extra } }),
@@ -41,4 +45,6 @@ export const useUIStore = create<UIState>((set) => ({
   toggleSidebarPlaces: () => set((s) => ({ sidebarPlacesExpanded: !s.sidebarPlacesExpanded })),
   showToast: (message) => set({ toastMessage: message }),
   clearToast: () => set({ toastMessage: null }),
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  closeSidebar: () => set({ sidebarOpen: false }),
 }))

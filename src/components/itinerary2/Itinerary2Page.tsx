@@ -63,8 +63,8 @@ export function Itinerary2Page() {
   if (!trip) return null
 
   return (
-    <div className="flex h-full">
-      <div className="flex-1 overflow-y-auto px-8 py-10">
+    <div className="flex h-[calc(100vh-49px)] md:h-full">
+      <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-10">
         <div className="max-w-[960px] mx-auto">
           <SectionHeader
             title="Itinerary"
@@ -115,7 +115,7 @@ export function Itinerary2Page() {
       </div>
 
       {sidebarOpen && (
-        <div className="w-72 flex-shrink-0 border-l border-border-light bg-card-bg overflow-hidden">
+        <div className="hidden md:block w-72 flex-shrink-0 border-l border-border-light bg-card-bg overflow-hidden">
           <PlacesSidebar />
         </div>
       )}

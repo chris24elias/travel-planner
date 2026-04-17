@@ -33,7 +33,7 @@ export function NotesPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {notes.sort((a, b) => a.orderIndex - b.orderIndex).map((note) => (
             <div
               key={note.id}
